@@ -1,8 +1,10 @@
 package br.com.backend.gerenciamento_hotel.Models;
+import java.util.UUID;
+import java.time.LocalDate;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
+
 
 import br.com.backend.gerenciamento_hotel.Enums.StatusDosQuartos;
 import br.com.backend.gerenciamento_hotel.Enums.TiposDeQuartos;
