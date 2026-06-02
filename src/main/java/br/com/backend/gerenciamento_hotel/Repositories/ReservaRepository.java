@@ -2,6 +2,7 @@
 package br.com.backend.gerenciamento_hotel.Repositories;
 import java.util.UUID;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import br.com.backend.gerenciamento_hotel.Models.Reserva;
 import br.com.backend.gerenciamento_hotel.Enums.StatusDeReservas;
@@ -20,6 +21,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
            "WHERE ir.quarto.id IN :quartoIds AND r.status = 'ativa' " +
            "AND (r.diaEHoraDaReserva <= :checkout AND r.DataHora >= :checkin)")
     boolean existeReservaAtivaConflitante(@Param("quartoIds") List<UUID> quartoIds, 
-                                          @Param("checkin") LocalDate checkin, 
-                                          @Param("checkout") LocalDate checkout);
+                                          @Param("checkin") LocalDateTime checkin, 
+                                          @Param("checkout") LocalDateTime checkout);
 }

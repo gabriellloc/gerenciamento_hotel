@@ -1,42 +1,58 @@
-
 package br.com.backend.gerenciamento_hotel.Services;
-import java.util.UUID;
-import java.time.LocalDate;
-
 import br.com.backend.gerenciamento_hotel.Models.Andar;
-import br.com.backend.gerenciamento_hotel.Models.Torre;
+import br.com.backend.gerenciamento_hotel.DTOs.Request.AndarRequestDTO;
+import br.com.backend.gerenciamento_hotel.DTOs.Response.AndarResponseDTO;
 import br.com.backend.gerenciamento_hotel.Repositories.AndarRepository;
-import br.com.backend.gerenciamento_hotel.Repositories.TorreRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AndarService {
     @Autowired private AndarRepository repository;
-    @Autowired private TorreRepository torreRepository;
+    @Autowired private TorreService torreService;
 
-    public Andar criar(Andar andar) {
-        if(andar.getTorre() == null || andar.getTorre().getId() == null) {
-            throw new IllegalArgumentException("Torre é obrigatória.");
-        }
-        Torre torre = torreRepository.findById(andar.getTorre().getId())
-            .orElseThrow(() -> new EntityNotFoundException("Torre não encontrada."));
-        andar.setTorre(torre);
-        return repository.save(andar);
+    public AndarResponseDTO criar(AndarRequestDTO dto) {
+        Andar entity = new Andar();
+        entity.setNumero(dto.getNumero());
+        entity.setTorre(torreService.buscarEntidade(dto.getTorreId()));
+        return toResponseDTO(repository.save(entity));
     }
 
-    public Andar buscarPorId(UUID id) {
+    public AndarResponseDTO buscarPorId(UUID id) {
+        return toResponseDTO(buscarEntidade(id));
+    }
+
+    public Andar buscarEntidade(UUID id) {
         return repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Andar não encontrado"));
     }
 
-    public List<Andar> listarPorTorre(UUID torreId) {
-        return repository.findByTorreId(torreId);
+    public List<AndarResponseDTO> listarTodos() {
+        return repository.findAll().stream().map(this::toResponseDTO).collect(Collectors.toList());
+    }
+
+    public AndarResponseDTO atualizar(UUID id, AndarRequestDTO dto) {
+        Andar entity = buscarEntidade(id);
+        entity.setNumero(dto.getNumero());
+        entity.setTorre(torreService.buscarEntidade(dto.getTorreId()));
+        return toResponseDTO(repository.save(entity));
     }
 
     public void deletar(UUID id) {
-        repository.delete(buscarPorId(id));
+        repository.delete(buscarEntidade(id));
+    }
+
+    public AndarResponseDTO toResponseDTO(Andar entity) {
+        AndarResponseDTO dto = new AndarResponseDTO();
+        dto.setId(entity.getId());
+        dto.setNumero(entity.getNumero());
+        if(entity.getTorre() != null) {
+            dto.setTorreId(entity.getTorre().getId());
+            dto.setTorreNome(entity.getTorre().getNome());
+        }
+        return dto;
     }
 }

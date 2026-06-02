@@ -1,61 +1,71 @@
-
 package br.com.backend.gerenciamento_hotel.Services;
-import java.util.UUID;
-import java.time.LocalDate;
-
 import br.com.backend.gerenciamento_hotel.Models.Reserva;
 import br.com.backend.gerenciamento_hotel.Models.Quarto;
-import br.com.backend.gerenciamento_hotel.Models.Hospede;
 import br.com.backend.gerenciamento_hotel.Models.ItemReserva;
+import br.com.backend.gerenciamento_hotel.DTOs.Request.ReservaRequestDTO;
+import br.com.backend.gerenciamento_hotel.DTOs.Response.ReservaResponseDTO;
 import br.com.backend.gerenciamento_hotel.Enums.StatusDeReservas;
 import br.com.backend.gerenciamento_hotel.Enums.StatusDosQuartos;
+import br.com.backend.gerenciamento_hotel.Exceptions.BusinessException;
 import br.com.backend.gerenciamento_hotel.Repositories.ReservaRepository;
 import br.com.backend.gerenciamento_hotel.Repositories.ItemReservaRepository;
-import br.com.backend.gerenciamento_hotel.DTOs.Request.ReservaRequestDTO;
-import br.com.backend.gerenciamento_hotel.Exceptions.BusinessException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ReservaService {
-
-    @Autowired private ReservaRepository reservaRepository;
+    @Autowired private ReservaRepository repository;
     @Autowired private ItemReservaRepository itemReservaRepository;
     @Autowired private QuartoService quartoService;
     @Autowired private HospedeService hospedeService;
     @Autowired private TarefaDeLimpezaService tarefaDeLimpezaService;
 
+    public Reserva buscarEntidade(UUID id) {
+        return repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
+    }
+
+    public ReservaResponseDTO buscarPorId(UUID id) {
+        return toResponseDTO(buscarEntidade(id));
+    }
+
+    public List<ReservaResponseDTO> listarTodos() {
+        return repository.findAll().stream().map(this::toResponseDTO).collect(Collectors.toList());
+    }
+
+    public List<ReservaResponseDTO> listarPorHospede(UUID hospedeId) {
+        return repository.findByHospedeId(hospedeId).stream().map(this::toResponseDTO).collect(Collectors.toList());
+    }
+
     @Transactional
-    public Reserva criarReserva(ReservaRequestDTO dto) {
-        Hospede hospede = hospedeService.buscarPorId(dto.getHospedeId());
+    public ReservaResponseDTO criarReserva(ReservaRequestDTO dto) {
+        var hospede = hospedeService.buscarEntidade(dto.getHospedeId());
         
         List<Quarto> quartos = new ArrayList<>();
         for (UUID qId : dto.getQuartoIds()) {
-            Quarto q = quartoService.buscarPorId(qId);
+            Quarto q = quartoService.buscarEntidade(qId);
             if (q.getStatus() != StatusDosQuartos.disponivel) {
                 throw new BusinessException("Quarto " + q.getNumero() + " indisponível no momento.");
             }
             quartos.add(q);
         }
 
-        if (reservaRepository.existeReservaAtivaConflitante(dto.getQuartoIds(), dto.getDataCheckinPrevista(), dto.getDataCheckoutPrevista())) {
+        if (repository.existeReservaAtivaConflitante(dto.getQuartoIds(), dto.getDiaEHoraDaReserva(), dto.getDataHora())) {
             throw new BusinessException("Existem quartos já reservados para o período informado.");
         }
 
         Reserva reserva = new Reserva();
         reserva.setHospede(hospede);
-        reserva.setDiaEHoraDaReserva(dto.getDataCheckinPrevista().atStartOfDay());
-        reserva.setDataHora(dto.getDataCheckoutPrevista().atStartOfDay());
-        reserva.setQuantidadeDeHospedes(dto.getQuantidadeHospedes());
+        reserva.setDiaEHoraDaReserva(dto.getDiaEHoraDaReserva());
+        reserva.setDataHora(dto.getDataHora());
+        reserva.setQuantidadeDeHospedes(dto.getQuantidadeDeHospedes());
         reserva.setStatus(StatusDeReservas.ativa);
-
-        reserva = reservaRepository.save(reserva);
+        reserva = repository.save(reserva);
 
         for (Quarto q : quartos) {
             ItemReserva ir = new ItemReserva();
@@ -65,58 +75,58 @@ public class ReservaService {
             itemReservaRepository.save(ir);
         }
 
-        return reserva;
+        return toResponseDTO(reserva);
     }
 
     @Transactional
-    public void realizarCheckin(UUID reservaId) {
-        Reserva reserva = buscarPorId(reservaId);
+    public ReservaResponseDTO realizarCheckin(UUID reservaId) {
+        Reserva reserva = buscarEntidade(reservaId);
         if (reserva.getStatus() != StatusDeReservas.ativa) {
             throw new BusinessException("Reserva não está ATIVA");
         }
-
-        //reserva.setDataCheckinReal(LocalDateTime.now());
-        
-        List<ItemReserva> itens = itemReservaRepository.findAll().stream().filter(ir -> ir.getReserva().getId().equals(reservaId)).toList();
+        var itens = itemReservaRepository.findAll().stream().filter(ir -> ir.getReserva().getId().equals(reservaId)).toList();
         for (ItemReserva ir : itens) {
             quartoService.atualizarStatus(ir.getQuarto().getId(), StatusDosQuartos.ocupado);
         }
-        reservaRepository.save(reserva);
+        return toResponseDTO(repository.save(reserva));
     }
 
     @Transactional
-    public void realizarCheckout(UUID reservaId) {
-        Reserva reserva = buscarPorId(reservaId);
+    public ReservaResponseDTO realizarCheckout(UUID reservaId) {
+        Reserva reserva = buscarEntidade(reservaId);
         if (reserva.getStatus() != StatusDeReservas.ativa) {
             throw new BusinessException("Reserva não está ATIVA");
         }
-
-        //reserva.setDataCheckoutReal(LocalDateTime.now());
         reserva.setStatus(StatusDeReservas.concluida);
-        
-        List<ItemReserva> itens = itemReservaRepository.findAll().stream().filter(ir -> ir.getReserva().getId().equals(reservaId)).toList();
+        var itens = itemReservaRepository.findAll().stream().filter(ir -> ir.getReserva().getId().equals(reservaId)).toList();
         for (ItemReserva ir : itens) {
             quartoService.atualizarStatus(ir.getQuarto().getId(), StatusDosQuartos.limpeza);
             tarefaDeLimpezaService.abrirTarefaParaQuarto(ir.getQuarto().getId());
         }
-        reservaRepository.save(reserva);
+        return toResponseDTO(repository.save(reserva));
     }
 
     @Transactional
-    public void cancelarReserva(UUID reservaId) {
-        Reserva reserva = buscarPorId(reservaId);
+    public ReservaResponseDTO cancelarReserva(UUID reservaId) {
+        Reserva reserva = buscarEntidade(reservaId);
         if (reserva.getStatus() != StatusDeReservas.ativa) {
             throw new BusinessException("Apenas reservas ATIVAS podem ser canceladas.");
         }
         reserva.setStatus(StatusDeReservas.cancelada);
-        reservaRepository.save(reserva);
+        return toResponseDTO(repository.save(reserva));
     }
 
-    public Reserva buscarPorId(UUID id) {
-        return reservaRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada"));
-    }
-
-    public List<Reserva> listarPorHospede(UUID hospedeId) {
-        return reservaRepository.findByHospedeId(hospedeId);
+    public ReservaResponseDTO toResponseDTO(Reserva entity) {
+        ReservaResponseDTO dto = new ReservaResponseDTO();
+        dto.setId(entity.getId());
+        dto.setDiaEHoraDaReserva(entity.getDiaEHoraDaReserva());
+        dto.setDataHora(entity.getDataHora());
+        dto.setQuantidadeDeHospedes(entity.getQuantidadeDeHospedes());
+        dto.setStatus(entity.getStatus());
+        if(entity.getHospede() != null) {
+            dto.setHospedeId(entity.getHospede().getId());
+            dto.setHospedeNome(entity.getHospede().getNome());
+        }
+        return dto;
     }
 }

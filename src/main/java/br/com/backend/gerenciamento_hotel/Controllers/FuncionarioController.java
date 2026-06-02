@@ -1,17 +1,14 @@
-
 package br.com.backend.gerenciamento_hotel.Controllers;
-import java.util.UUID;
-import java.time.LocalDate;
-
-import br.com.backend.gerenciamento_hotel.Models.Funcionario;
-import br.com.backend.gerenciamento_hotel.Enums.CargoDosFuncionarios;
+import br.com.backend.gerenciamento_hotel.DTOs.Request.FuncionarioRequestDTO;
+import br.com.backend.gerenciamento_hotel.DTOs.Response.FuncionarioResponseDTO;
 import br.com.backend.gerenciamento_hotel.Services.FuncionarioService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/funcionarios")
@@ -19,28 +16,23 @@ public class FuncionarioController {
     @Autowired private FuncionarioService service;
 
     @PostMapping
-    public ResponseEntity<Funcionario> criar(@RequestBody Funcionario funcionario) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(funcionario));
+    public ResponseEntity<FuncionarioResponseDTO> criar(@Valid @RequestBody FuncionarioRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(dto));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Funcionario> buscar(@PathVariable UUID id) {
+    public ResponseEntity<FuncionarioResponseDTO> buscar(@PathVariable UUID id) {
         return ResponseEntity.ok(service.buscarPorId(id));
     }
 
-    @GetMapping("/hotel/{hotelId}")
-    public ResponseEntity<List<Funcionario>> listarPorHotel(@PathVariable UUID hotelId) {
-        return ResponseEntity.ok(service.listarPorHotel(hotelId));
-    }
-    
-    @GetMapping("/cargo/{cargo}")
-    public ResponseEntity<List<Funcionario>> listarPorCargo(@PathVariable CargoDosFuncionarios cargo) {
-        return ResponseEntity.ok(service.listarPorCargo(cargo));
+    @GetMapping
+    public ResponseEntity<List<FuncionarioResponseDTO>> listarTodos() {
+        return ResponseEntity.ok(service.listarTodos());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Funcionario> atualizar(@PathVariable UUID id, @RequestBody Funcionario funcionario) {
-        return ResponseEntity.ok(service.atualizar(id, funcionario));
+    public ResponseEntity<FuncionarioResponseDTO> atualizar(@PathVariable UUID id, @Valid @RequestBody FuncionarioRequestDTO dto) {
+        return ResponseEntity.ok(service.atualizar(id, dto));
     }
 
     @DeleteMapping("/{id}")

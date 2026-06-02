@@ -1,49 +1,62 @@
-
 package br.com.backend.gerenciamento_hotel.Services;
-import java.util.UUID;
-import java.time.LocalDate;
-
-import br.com.backend.gerenciamento_hotel.Models.Hotel;
 import br.com.backend.gerenciamento_hotel.Models.Torre;
-import br.com.backend.gerenciamento_hotel.Repositories.HotelRepository;
+import br.com.backend.gerenciamento_hotel.Models.Hotel;
+import br.com.backend.gerenciamento_hotel.DTOs.Request.TorreRequestDTO;
+import br.com.backend.gerenciamento_hotel.DTOs.Response.TorreResponseDTO;
 import br.com.backend.gerenciamento_hotel.Repositories.TorreRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TorreService {
     @Autowired private TorreRepository repository;
-    @Autowired private HotelRepository hotelRepository;
+    @Autowired private HotelService hotelService;
 
-    public Torre criar(Torre torre) {
-        if(torre.getHotel() == null || torre.getHotel().getId() == null) {
-            throw new IllegalArgumentException("Hotel é obrigatório.");
-        }
-        Hotel hotel = hotelRepository.findById(torre.getHotel().getId())
-            .orElseThrow(() -> new EntityNotFoundException("Hotel não encontrado."));
-        torre.setHotel(hotel);
-        return repository.save(torre);
+    public TorreResponseDTO criar(TorreRequestDTO dto) {
+        Torre entity = new Torre();
+        entity.setNome(dto.getNome());
+        entity.setDescricao(dto.getDescricao());
+        entity.setHotel(hotelService.buscarEntidade(dto.getHotelId()));
+        return toResponseDTO(repository.save(entity));
     }
 
-    public Torre buscarPorId(UUID id) {
+    public TorreResponseDTO buscarPorId(UUID id) {
+        return toResponseDTO(buscarEntidade(id));
+    }
+
+    public Torre buscarEntidade(UUID id) {
         return repository.findById(id).orElseThrow(() -> new EntityNotFoundException("Torre não encontrada"));
     }
 
-    public List<Torre> listarPorHotel(UUID hotelId) {
-        return repository.findByHotelId(hotelId);
+    public List<TorreResponseDTO> listarTodos() {
+        return repository.findAll().stream().map(this::toResponseDTO).collect(Collectors.toList());
     }
 
-    public Torre atualizar(UUID id, Torre entity) {
-        Torre existing = buscarPorId(id);
-        entity.setId(existing.getId());
-        if(entity.getHotel() == null) entity.setHotel(existing.getHotel());
-        return repository.save(entity);
+    public TorreResponseDTO atualizar(UUID id, TorreRequestDTO dto) {
+        Torre entity = buscarEntidade(id);
+        entity.setNome(dto.getNome());
+        entity.setDescricao(dto.getDescricao());
+        entity.setHotel(hotelService.buscarEntidade(dto.getHotelId()));
+        return toResponseDTO(repository.save(entity));
     }
 
     public void deletar(UUID id) {
-        repository.delete(buscarPorId(id));
+        repository.delete(buscarEntidade(id));
+    }
+
+    public TorreResponseDTO toResponseDTO(Torre entity) {
+        TorreResponseDTO dto = new TorreResponseDTO();
+        dto.setId(entity.getId());
+        dto.setNome(entity.getNome());
+        dto.setDescricao(entity.getDescricao());
+        if(entity.getHotel() != null) {
+            dto.setHotelId(entity.getHotel().getId());
+            dto.setHotelNome(entity.getHotel().getNome());
+        }
+        return dto;
     }
 }
