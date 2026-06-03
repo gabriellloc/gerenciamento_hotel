@@ -1,7 +1,9 @@
 package br.com.backend.gerenciamento_hotel.Models;
+import java.util.UUID;
+import java.time.LocalDate;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+
 
 import org.hibernate.annotations.CreationTimestamp;
 

@@ -1,9 +1,10 @@
 services:
   PostgreSQL:
     image: "postgres:17"
+    container_name: postgres_hotel
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: gerenciamento_hotel
     ports:
-      - "5432:5432"
+      - "5433:5432"
