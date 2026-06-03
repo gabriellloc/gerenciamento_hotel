@@ -1,4 +1,6 @@
 package br.com.backend.gerenciamento_hotel;
+import java.util.UUID;
+import java.time.LocalDate;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

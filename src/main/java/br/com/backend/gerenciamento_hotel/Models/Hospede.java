@@ -1,8 +1,9 @@
 package br.com.backend.gerenciamento_hotel.Models;
-
-import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
+
+import java.util.List;
+
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
