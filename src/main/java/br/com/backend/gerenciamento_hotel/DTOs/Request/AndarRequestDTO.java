@@ -6,6 +6,8 @@ import lombok.Data;
 
 @Data
 public class AndarRequestDTO {
-    @NotNull private Integer numero;
-    @NotNull private UUID torreId;
+    @NotNull
+    private Integer numero;
+    @NotNull
+    private UUID torreId;
 }
